@@ -1,0 +1,37 @@
+/* 🌌 ضبط الخلفية */
+body {
+  background-image: url('/public/wallpaper2.jpg'); /* ضع الصورة داخل مجلد public */
+  background-size: cover; /* تغطي الشاشة بالكامل بدون فقدان أي جزء */
+  background-position: center; /* توسيط الخلفية */
+  background-repeat: no-repeat; /* منع التكرار */
+  background-attachment: fixed; /* تبقى ثابتة عند التمرير */
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ✅ تحسين تجربة المستخدم */
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* ✅ تنسيق المحتوى داخل التطبيق */
+.app-container {
+  text-align: center;
+  color: white; /* لضمان وضوح النصوص */
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
+
+/* 🌟 دعم الشاشات الصغيرة */
+@media (max-width: 768px) {
+  body {
+    background-size: contain; /* في الشاشات الصغيرة، اجعل الصورة تُعرض بالكامل */
+  }
+}
