@@ -84,7 +84,7 @@ const TodoList = () => {
   const addCollaborator = async (taskId) => {
     if (collaboratorEmail.trim()) {
       const taskRef = doc(db, 'tasks', taskId);
-      const task = tasks.find((task) => task.id === taskId);
+      const task = [...tasks, ...collaborativeTasks].find((task) => task.id === taskId);
   
       if (task) {
         const updatedCollaborators = [...(task.collaborators || []), collaboratorEmail];
