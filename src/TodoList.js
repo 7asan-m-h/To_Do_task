@@ -50,6 +50,13 @@ const TodoList = () => {
   const [selectAll, setSelectAll] = useState(false);
   const theme = useTheme();
 
+  const getAllTasks = (snapshot) => {
+    const allTasks = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const userEmail = auth.currentUser?.email;
+    setTasks(allTasks.filter((task) => task.createdBy === userEmail));
+    setCollaborativeTasks(allTasks.filter((task) => task.collaborators?.includes(userEmail)));
+  };
+
   useEffect(() => {
     const tasksRef = collection(db, 'tasks');
     const unsubscribe = onSnapshot(tasksRef, (snapshot) => {
@@ -80,17 +87,16 @@ const TodoList = () => {
       setDueTime('');
     }
   };
-  
+
   const addCollaborator = async (taskId) => {
     if (collaboratorEmail.trim()) {
       const taskRef = doc(db, 'tasks', taskId);
       const task = [...tasks, ...collaborativeTasks].find((task) => task.id === taskId);
-  
+
       if (task) {
         const updatedCollaborators = [...(task.collaborators || []), collaboratorEmail];
         await updateDoc(taskRef, { collaborators: updatedCollaborators });
-  
-        // إرسال إشعار
+
         await addDoc(collection(db, 'notifications'), {
           receiverEmail: collaboratorEmail,
           message: `You have been added to the task: ${task.title}`,
@@ -98,13 +104,11 @@ const TodoList = () => {
           read: false,
           timestamp: Timestamp.now(),
         });
-  
+
         setCollaboratorEmail('');
       }
     }
   };
-  
-
 
   const toggleComplete = async (task) => {
     const taskRef = doc(db, 'tasks', task.id);
@@ -159,11 +163,15 @@ const TodoList = () => {
     setSelectedTasks([]);
   };
 
+  const cardStyle = {
+    backgroundColor: theme.palette.mode === 'light' ? '#f4f6f8' : '#1e1e1e'
+  };
   
 
   return (
     <Box>
-      <Card sx={{ marginBottom: '2rem' }}>
+      <Card sx={{ marginBottom: '2rem', ...cardStyle }}>
+
         <CardContent>
           <Typography variant="h5" gutterBottom>
             Add a New Task

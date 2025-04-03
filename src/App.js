@@ -1,7 +1,17 @@
+// لا تغيير على الاستيرادات الأصلية
 import React, { useState, useEffect } from 'react';
 import { auth, db, messaging } from './firebase';
-import { doc, getDoc, collection, onSnapshot, updateDoc, addDoc, arrayUnion } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  collection,
+  onSnapshot,
+  updateDoc,
+  arrayUnion,
+} from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
+import Profile from './Profile'; // ✅ مستخدم كما هو
+
 import Auth from './Auth';
 import TodoList from './TodoList';
 import Welcome from './welcome';
@@ -19,12 +29,17 @@ import {
   List,
   ListItem,
   ListItemText,
+  Menu,
+  MenuItem,
+  Avatar,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import './App.css'; 
+import './App.css';
 
 const App = () => {
+  const [showProfile, setShowProfile] = useState(false); // ✅ عرض الملف الشخصي
+
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,8 +47,9 @@ const App = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [tasks, setTasks] = useState([]); 
+  const [tasks, setTasks] = useState([]);
   const [collaborativeTasks, setCollaborativeTasks] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const theme = createTheme({
     palette: {
@@ -61,9 +77,9 @@ const App = () => {
         const docRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setUserName(docSnap.data().name);
+          setUserName(docSnap.data().name || user.displayName || 'User');
         } else {
-          setUserName('User');
+          setUserName(user.displayName || 'User');
         }
       } else {
         setUser(null);
@@ -75,7 +91,6 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  // ✅ جلب جميع المهام من Firestore
   useEffect(() => {
     if (user) {
       const tasksRef = collection(db, 'tasks');
@@ -84,24 +99,23 @@ const App = () => {
           id: doc.id,
           ...doc.data(),
         }));
-
-        setTasks(allTasks); // تحديث جميع المهام
-        const sharedTasks = allTasks.filter((task) => 
+        setTasks(allTasks);
+        const sharedTasks = allTasks.filter((task) =>
           task.collaborators?.includes(user.email)
         );
-        setCollaborativeTasks(sharedTasks); // تحديث قائمة المهام المشتركة
+        setCollaborativeTasks(sharedTasks);
       });
 
       return () => unsubscribe();
     }
   }, [user]);
 
-  // ✅ جلب FCM Token للإشعارات
   useEffect(() => {
     const fetchToken = async () => {
       try {
         const currentToken = await getToken(messaging, {
-          vapidKey: 'BDPFV4f-r47-hJzFoVPnfLVCS90fGcLyH2Oi0MJy_VohSo6BNxKblQOmOu7mbIc3KY6aA0VkvIx1A7GrmE8xg7A',
+          vapidKey:
+            'BDPFV4f-r47-hJzFoVPnfLVCS90fGcLyH2Oi0MJy_VohSo6BNxKblQOmOu7mbIc3KY6aA0VkvIx1A7GrmE8xg7A',
         });
         if (currentToken) {
           console.log('FCM Token:', currentToken);
@@ -129,22 +143,31 @@ const App = () => {
     });
   }, []);
 
-  const handleEnter = () => {
-    setShowWelcome(false);
-  };
+  const handleEnter = () => setShowWelcome(false);
 
-  // ✅ تحديث قائمة المهام المشتركة بعد الإضافة
   const addCollaborativeTask = async (taskId, email) => {
     const taskRef = doc(db, 'tasks', taskId);
     await updateDoc(taskRef, {
       collaborators: arrayUnion(email),
     });
 
-    // تحديث المهام المشتركة بعد التعديل
     const docSnap = await getDoc(taskRef);
     if (docSnap.exists()) {
       setCollaborativeTasks((prev) => [...prev, docSnap.data()]);
     }
+  };
+
+  const handleAvatarClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    auth.signOut();
+    setAnchorEl(null);
   };
 
   if (loading) {
@@ -160,28 +183,54 @@ const App = () => {
       <CssBaseline />
       {showWelcome ? (
         <Welcome onEnter={handleEnter} />
+      ) : showProfile ? ( // ✅ عرض صفحة الملف الشخصي
+        <Profile onBack={() => setShowProfile(false)} />
       ) : (
         <>
-          {/* ✅ الشريط العلوي ثابت */}
           <AppBar position="fixed" sx={{ width: '100%', zIndex: 1100 }}>
             <Toolbar>
               <Typography variant="h6" sx={{ flexGrow: 1 }}>
                 Task Manager
               </Typography>
+
               <Switch
                 checked={darkMode}
                 onChange={() => setDarkMode(!darkMode)}
                 inputProps={{ 'aria-label': 'toggle dark mode' }}
               />
+
               <IconButton color="inherit" onClick={() => setDrawerOpen(true)}>
                 <Badge badgeContent={notifications.length} color="error">
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
+
+              {user && (
+                <>
+                  <IconButton onClick={handleAvatarClick}>
+                    <Avatar alt={userName} src={user.photoURL || ''} />
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                  >
+                    <MenuItem disabled>{userName}</MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        setShowProfile(true); // ✅ عند الضغط على "Profile"
+                        handleMenuClose();
+                      }}
+                    >
+                      Profile
+                    </MenuItem>
+                    <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                  </Menu>
+                </>
+              )}
             </Toolbar>
           </AppBar>
 
-          {/* ✅ قائمة الإشعارات */}
           <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
             <Box width="300px" padding="1rem">
               <Typography variant="h6" gutterBottom>
@@ -191,7 +240,10 @@ const App = () => {
                 {notifications.length > 0 ? (
                   notifications.map((notification, index) => (
                     <ListItem key={index}>
-                      <ListItemText primary={notification.title} secondary={notification.body} />
+                      <ListItemText
+                        primary={notification.title}
+                        secondary={notification.body}
+                      />
                     </ListItem>
                   ))
                 ) : (
@@ -201,22 +253,29 @@ const App = () => {
             </Box>
           </Drawer>
 
-          {/* ✅ عرض المهام */}
           <Box textAlign="center" padding="2rem" sx={{ paddingTop: '64px' }}>
             {user ? (
               <>
-                <Typography variant="h5" gutterBottom>
-                  Welcome, {userName}!
-                </Typography>
-                <TodoList 
-                  updateCollaborativeTasks={addCollaborativeTask} 
-                  tasks={tasks} 
-                  collaborativeTasks={collaborativeTasks} 
+                <Typography
+  variant="h5"
+  gutterBottom
+  sx={{ color: theme.palette.mode === 'white' ? '#999' : '#fff' ,
+    mt: 4, // margin-top
+    mb: 3, // margin-bottom
+
+  }}
+>
+  Welcome, {userName}!
+</Typography>
+                <TodoList
+                  updateCollaborativeTasks={addCollaborativeTask}
+                  tasks={tasks}
+                  collaborativeTasks={collaborativeTasks}
                 />
                 <Button
                   variant="outlined"
                   color="secondary"
-                  onClick={() => auth.signOut()}
+                  onClick={handleLogout}
                   sx={{ marginTop: '1rem' }}
                 >
                   Logout
