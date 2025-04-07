@@ -45,7 +45,7 @@ const TodoList = () => {
   const [dueTime, setDueTime] = useState('');
   const [editingTask, setEditingTask] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [collaboratorEmail, setCollaboratorEmail] = useState('');
+  const [collaboratorEmails, setCollaboratorEmails] = useState({});
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const theme = useTheme();
@@ -89,26 +89,28 @@ const TodoList = () => {
   };
 
   const addCollaborator = async (taskId) => {
-    if (collaboratorEmail.trim()) {
-      const taskRef = doc(db, 'tasks', taskId);
-      const task = [...tasks, ...collaborativeTasks].find((task) => task.id === taskId);
+    const email = collaboratorEmails[taskId];
+  if (email?.trim()) {
+    const taskRef = doc(db, 'tasks', taskId);
+    const task = [...tasks, ...collaborativeTasks].find((task) => task.id === taskId);
 
-      if (task) {
-        const updatedCollaborators = [...(task.collaborators || []), collaboratorEmail];
-        await updateDoc(taskRef, { collaborators: updatedCollaborators });
+    if (task) {
+      const updatedCollaborators = [...(task.collaborators || []), email];
+      await updateDoc(taskRef, { collaborators: updatedCollaborators });
 
-        await addDoc(collection(db, 'notifications'), {
-          receiverEmail: collaboratorEmail,
-          message: `You have been added to the task: ${task.title}`,
-          taskId: taskId,
-          read: false,
-          timestamp: Timestamp.now(),
-        });
+      await addDoc(collection(db, 'notifications'), {
+        receiverEmail: email,
+        message: `You have been added to the task: ${task.title}`,
+        taskId: taskId,
+        read: false,
+        timestamp: Timestamp.now(),
+      });
 
-        setCollaboratorEmail('');
-      }
+      // Clear only this task's input
+      setCollaboratorEmails((prev) => ({ ...prev, [taskId]: '' }));
     }
-  };
+  }
+};
 
   const toggleComplete = async (task) => {
     const taskRef = doc(db, 'tasks', task.id);
@@ -138,6 +140,10 @@ const TodoList = () => {
       setOpenDialog(false);
       setEditingTask(null);
     }
+  };
+
+  const handleCollaboratorChange = (taskId, value) => {
+    setCollaboratorEmails((prev) => ({ ...prev, [taskId]: value }));
   };
 
   const handleSelectTask = (id) => {
@@ -255,8 +261,8 @@ const TodoList = () => {
                               <Box mt={1}>
                                 <TextField
                                   label="Add Collaborator"
-                                  value={collaboratorEmail}
-                                  onChange={(e) => setCollaboratorEmail(e.target.value)}
+                                  value={collaboratorEmails[task.id] || ''}
+                                  onChange={(e) => handleCollaboratorChange(task.id,e.target.value)}
                                   size="small"
                                   fullWidth
                                 />

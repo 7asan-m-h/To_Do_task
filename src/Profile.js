@@ -61,7 +61,7 @@ const Profile = ({ onBack }) => {
   }
 
   return (
-    <Box display="flex" justifyContent="center" mt={4}>
+    <Box display="flex" justifyContent="center" mt={35}>
       <Card sx={{ width: 400, padding: 2 }}>
         <CardContent>
           <Box display="flex" flexDirection="column" alignItems="center">
